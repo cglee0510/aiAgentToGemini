@@ -1,0 +1,2 @@
+[console_scripts]
+gits = gits.main:main

@@ -1,0 +1,2 @@
+[console_scripts]
+clight = clight.system.main:main

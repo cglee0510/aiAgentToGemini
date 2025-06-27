@@ -1,0 +1,14 @@
+# 가상환경 관련 폴더
+# Lib/
+# Include/
+# Scripts/
+# share/
+# pyvenv.cfg
+
+# 기타 무시할 수 있는 파이썬 파일
+# __pycache__/
+# *.pyc
+# *.pyo
+# *.pyd
+# *.log
+

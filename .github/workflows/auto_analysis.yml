@@ -1,0 +1,93 @@
+# .github/workflows/auto_analysis.yml
+name: Auto News Analysis
+
+on:
+  push:
+    paths:
+      - 'economic_news_report_*.txt'  # 뉴스 리포트 파일이 푸시될 때 트리거
+    branches:
+      - main
+  workflow_dispatch:  # 수동 실행도 가능
+
+jobs:
+  analyze_news:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 전체 히스토리 가져오기
+        
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        pip install google-generativeai requests python-dateutil
+        
+    - name: Get latest news report file
+      id: get_file
+      run: |
+        # 가장 최근에 추가된 뉴스 리포트 파일 찾기
+        LATEST_FILE=$(ls -t economic_news_report_*.txt 2>/dev/null | head -1)
+        if [ -z "$LATEST_FILE" ]; then
+          echo "No new news report found"
+          echo "skip=true" >> $GITHUB_OUTPUT
+        else
+          echo "Found new file: $LATEST_FILE"
+          echo "filename=$LATEST_FILE" >> $GITHUB_OUTPUT
+          echo "skip=false" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Analyze news with Gemini AI
+      if: steps.get_file.outputs.skip == 'false'
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: |
+        python .github/Scripts/analyze_news.py "${{ steps.get_file.outputs.filename }}"
+        
+    - name: Commit and push analysis (Conflict Resolution)
+      if: steps.get_file.outputs.skip == 'false'
+      run: |
+        echo "=== Git 커밋 및 푸시 (충돌 해결 포함) ==="
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # 최대 3번 재시도
+        for i in {1..3}; do
+          echo "--- 시도 $i/3 ---"
+          
+          # 원격 변경사항 동기화
+          echo "원격 변경사항 가져오기..."
+          git fetch origin main
+          git pull origin main --no-edit || echo "Pull 시도 완료"
+          
+          # 분석 파일 추가
+          echo "분석 파일 추가..."
+          git add analysis_*.md 2>/dev/null || echo "추가할 분석 파일 없음"
+          
+          if git diff --staged --quiet; then
+            echo "변경사항 없음, 종료"
+            break
+          else
+            echo "커밋 생성..."
+            git commit -m "🤖 자동 분석: ${{ steps.get_file.outputs.filename }}"
+            
+            echo "Push 시도..."
+            if git push origin main; then
+              echo "✅ Push 성공!"
+              break
+            else
+              echo "❌ Push 실패, 재시도 준비..."
+              sleep 5
+            fi
+          fi
+          
+          if [ $i -eq 3 ]; then
+            echo "❌ 3번 시도 후에도 실패"
+            exit 1
+          fi
+        done
