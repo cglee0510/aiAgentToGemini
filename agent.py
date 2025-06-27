@@ -13,7 +13,7 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 print(f"GitHub Token: {'설정됨' if GITHUB_TOKEN else '설정되지 않음'}")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 print(f"Gemini API Key: {'설정됨' if GEMINI_API_KEY else '설정되지 않음'}")
-REPO_URL = f"https://{GITHUB_TOKEN}@github.com/cglee0510/quant.git"
+REPO_URL = f"https://{GITHUB_TOKEN}@github.com/cglee0510/aiAgentToGemeni.git"
 LOCAL_DIR = r"F:\pyProjects\aiAgent\gemini"  # 새로운 폴더명으로 변경
 
 # Gemini 초기화
