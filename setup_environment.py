@@ -8,25 +8,51 @@ import subprocess
 import platform
 from pathlib import Path
 
+def setup_console_encoding():
+    """Windows 콘솔 인코딩 설정"""
+    try:
+        if platform.system() == "Windows":
+            import locale
+            # UTF-8 인코딩 시도
+            os.system('chcp 65001 > nul 2>&1')
+            # stdout 인코딩 확인
+            current_encoding = sys.stdout.encoding
+            print(f"[INFO] 현재 인코딩: {current_encoding}")
+    except Exception as e:
+        print(f"[WARNING] 인코딩 설정 실패: {e}")
+
+def safe_print(text):
+    """안전한 출력 (이모지 문제 해결)"""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        # 이모지 제거하여 출력
+        import re
+        clean_text = re.sub(r'[^\x00-\x7F\uAC00-\uD7AF]', '?', text)
+        print(clean_text)
+
 def run_command(command, check=True):
     """명령어 실행"""
-    print(f"🔄 실행: {command}")
+    safe_print(f"[실행] {command}")
     try:
         result = subprocess.run(command, shell=True, check=check, 
-                              capture_output=True, text=True)
+                              capture_output=True, text=True, encoding='utf-8')
         if result.stdout:
-            print(f"✅ 출력: {result.stdout.strip()}")
+            safe_print(f"[출력] {result.stdout.strip()}")
         return result.returncode == 0
     except subprocess.CalledProcessError as e:
-        print(f"❌ 오류: {e.stderr}")
+        safe_print(f"[오류] {e.stderr}")
+        return False
+    except Exception as e:
+        safe_print(f"[오류] {str(e)}")
         return False
 
 def check_python_version():
     """Python 버전 확인"""
     version = sys.version_info
-    print(f"🐍 Python 버전: {version.major}.{version.minor}.{version.micro}")
+    safe_print(f"[Python] 버전: {version.major}.{version.minor}.{version.micro}")
     if version.major < 3 or (version.major == 3 and version.minor < 8):
-        print("⚠️ Python 3.8 이상이 권장됩니다.")
+        safe_print("[경고] Python 3.8 이상이 권장됩니다.")
         return False
     return True
 
@@ -35,22 +61,22 @@ def setup_virtual_environment():
     venv_path = Path("venv")
     
     if venv_path.exists():
-        print("📦 기존 가상환경 발견됨")
+        safe_print("[INFO] 기존 가상환경 발견됨")
         response = input("기존 가상환경을 삭제하고 새로 만드시겠습니까? (y/N): ")
         if response.lower() == 'y':
-            print("🗑️ 기존 가상환경 삭제 중...")
+            safe_print("[INFO] 기존 가상환경 삭제 중...")
             import shutil
             shutil.rmtree(venv_path)
         else:
-            print("📦 기존 가상환경 사용")
+            safe_print("[INFO] 기존 가상환경 사용")
             return True
     
-    print("📦 새 가상환경 생성 중...")
+    safe_print("[INFO] 새 가상환경 생성 중...")
     if not run_command(f"{sys.executable} -m venv venv"):
-        print("❌ 가상환경 생성 실패")
+        safe_print("[ERROR] 가상환경 생성 실패")
         return False
     
-    print("✅ 가상환경 생성 완료")
+    safe_print("[SUCCESS] 가상환경 생성 완료")
     return True
 
 def get_activation_command():
@@ -294,21 +320,24 @@ def display_next_steps():
 
 def main():
     """메인 함수"""
-    print("🚀 aiAgentToGemini 프로젝트 환경 설정")
-    print("="*50)
+    # 콘솔 인코딩 설정
+    setup_console_encoding()
+    
+    safe_print("aiAgentToGemini 프로젝트 환경 설정")
+    safe_print("="*50)
     
     # Python 버전 확인
     if not check_python_version():
-        print("❌ Python 버전이 너무 낮습니다.")
+        safe_print("[ERROR] Python 버전이 너무 낮습니다.")
         return
     
     # 현재 디렉토리 확인
     if not (Path("agent.py").exists() or Path("webCroll.py").exists()):
-        print("❌ agent.py 또는 webCroll.py 파일이 없습니다.")
-        print("💡 프로젝트 루트 디렉토리에서 실행하세요.")
+        safe_print("[ERROR] agent.py 또는 webCroll.py 파일이 없습니다.")
+        safe_print("[HELP] 프로젝트 루트 디렉토리에서 실행하세요.")
         return
     
-    print("✅ 프로젝트 파일 확인됨")
+    safe_print("[SUCCESS] 프로젝트 파일 확인됨")
     
     # 1. 가상환경 설정
     if not setup_virtual_environment():
@@ -332,7 +361,7 @@ def main():
         # 7. 다음 단계 안내
         display_next_steps()
     else:
-        print("❌ 설치 검증 실패. 수동으로 확인이 필요합니다.")
+        safe_print("[ERROR] 설치 검증 실패. 수동으로 확인이 필요합니다.")
 
 if __name__ == "__main__":
     main()
